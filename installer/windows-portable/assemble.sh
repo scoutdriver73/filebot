@@ -14,15 +14,17 @@ mkdir -p "$OUT/lib"
 # application classes
 cp "$ROOT/dist/lib/filebot.jar" "$OUT/FileBot.jar"
 
-# runtime libraries: everything Ivy resolved, minus build-only and macOS-only tools
-shopt -s nullglob
-for jar in "$ROOT"/lib/ivy/jar/*.jar "$ROOT"/lib/ivy/bundle/*.jar; do
+# runtime libraries: the curated set the build copied into dist/lib (see the build target in build.xml),
+# minus macOS-only and superseded JAXB jars, plus the JAXB runtime that Java 11 no longer bundles
+for jar in "$ROOT"/dist/lib/*.jar; do
 	case "$(basename "$jar")" in
-		ant-spk.jar|jdeb.jar|ant-junit.jar|junit.jar|hamcrest-core.jar|bcpg*.jar|bcprov*.jar|commons-compress.jar|*-sources.jar|*-javadoc.jar) ;;
+		filebot.jar|ObjCBridge.jar|jaxb-impl.jar|activation.jar) ;;
 		*) cp "$jar" "$OUT/lib/" ;;
 	esac
 done
-cp "$ROOT/lib/jars/simmetrics.jar" "$ROOT/lib/jars/jacksum.jar" "$OUT/lib/"
+for name in jaxb-runtime txw2 istack-commons-runtime javax.activation-api; do
+	cp "$ROOT/lib/ivy/jar/$name.jar" "$OUT/lib/"
+done
 
 # native libraries (JNA dispatch and 7-Zip-JBinding) next to the launcher
 cp "$ROOT"/lib/native/win32-x64/*.dll "$OUT/"
