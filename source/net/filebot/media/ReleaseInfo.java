@@ -478,8 +478,25 @@ public class ReleaseInfo {
 
 	protected <A> Resource<A[]> resource(String name, Duration expirationTime, Function<String, A> parse, IntFunction<A[]> generator) {
 		return () -> {
-			Cache cache = Cache.getCache("data", CacheType.Persistent);
-			byte[] bytes = cache.bytes(name, n -> new URL(getProperty(n)), XZInputStream::new).expire(refreshDuration.optional().orElse(expirationTime)).get();
+			String location = getProperty(name).trim();
+			byte[] bytes;
+
+			if (location.isEmpty()) {
+				// data source disabled
+				bytes = new byte[0];
+			} else if (location.startsWith(CLASSPATH_PREFIX)) {
+				// data file bundled with the application (plain UTF-8 text)
+				try (java.io.InputStream in = ReleaseInfo.class.getResourceAsStream(location.substring(CLASSPATH_PREFIX.length()))) {
+					if (in == null) {
+						throw new java.io.FileNotFoundException(location);
+					}
+					bytes = in.readAllBytes();
+				}
+			} else {
+				// remote data file (XZ compressed)
+				Cache cache = Cache.getCache("data", CacheType.Persistent);
+				bytes = cache.bytes(name, n -> new URL(location), XZInputStream::new).expire(refreshDuration.optional().orElse(expirationTime)).get();
+			}
 
 			// all data files are UTF-8 encoded XZ compressed text files
 			Stream<String> lines = NEWLINE.splitAsStream(UTF_8.decode(ByteBuffer.wrap(bytes)));
@@ -487,6 +504,8 @@ public class ReleaseInfo {
 			return lines.filter(s -> s.length() > 0).map(parse).filter(Objects::nonNull).toArray(generator);
 		};
 	}
+
+	private static final String CLASSPATH_PREFIX = "classpath:";
 
 	protected String getProperty(String name) {
 		// override resource locations via Java System properties
