@@ -25,5 +25,4 @@ jobs:
               echo "not valid xz; first bytes:" >> $out; head -c 300 "$f.xz" >> $out; echo >> $out
             fi
           done
-          git config user.name ci; git config user.email ci@example.com
-          git add $out && git commit -m "diag result" && git push
+          while IFS= read -r line; do echo "::notice::$line"; done < <(cut -c1-180 $out | head -60)
