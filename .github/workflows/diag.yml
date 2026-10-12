@@ -10,10 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
+          set +e
           out=diag-result.txt; : > $out
           for f in release-groups query-blacklist series-mappings moviedb thetvdb anidb osdb; do
             u="https://app.filebot.net/data/$f.txt.xz"
-            code=$(curl -sS -L -o "$f.xz" -w '%{http_code} %{size_download} %{content_type}' -A 'FileBot 4.8.0' "$u" 2>&1)
+            code=$(curl -sS -L -o "$f.xz" -w "%{http_code} %{size_download} %{content_type} %{remote_ip}" -A 'FileBot 4.8.0' "$u" 2>&1; echo " exit=$?")
             echo "== $f: $code" >> $out
             curl -sS -I -A 'FileBot 4.8.0' "$u" | grep -iE '^(last-modified|date|server)' >> $out || true
             if xz -t "$f.xz" 2>/dev/null; then
