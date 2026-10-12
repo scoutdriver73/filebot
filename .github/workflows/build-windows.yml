@@ -1,0 +1,54 @@
+name: Build Windows package
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # build.xml counts commits for the revision number
+
+      - name: Install Ant and Ivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ant
+          mkdir -p "$HOME/.ant/lib"
+          curl -fsSL -o "$HOME/.ant/lib/ivy.jar" https://repo1.maven.org/maven2/org/apache/ivy/ivy/2.5.2/ivy-2.5.2.jar
+
+      # Java 11 with JavaFX bundled (FileBot uses JavaFX, which standard JDKs no longer include)
+      - uses: actions/setup-java@v4
+        with:
+          distribution: liberica
+          java-version: '11'
+          java-package: jdk+fx
+
+      - name: Resolve dependencies
+        run: ant resolve
+
+      - name: Compile
+        run: ant jar
+
+      - name: Download MediaInfo DLL
+        continue-on-error: true
+        run: |
+          curl -fsSL -o mediainfo.zip https://mediaarea.net/download/binary/libmediainfo0/24.12/MediaInfo_DLL_24.12_Windows_x64_WithoutInstaller.zip
+          unzip -o -j mediainfo.zip MediaInfo.dll -d mediainfo
+
+      - name: Assemble Windows package
+        run: bash installer/windows-portable/assemble.sh mediainfo/MediaInfo.dll
+
+      - name: Smoke test (start FileBot and print version)
+        working-directory: dist/FileBot-windows-x64
+        run: |
+          java -Djava.awt.headless=true -Dapplication.update=skip -Dapplication.dir="$RUNNER_TEMP/fb" \
+            -cp "FileBot.jar:lib/*" net.filebot.Main -version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FileBot-windows-x64
+          path: dist/FileBot-windows-x64/
