@@ -25,4 +25,8 @@ jobs:
               echo "not valid xz; first bytes:" >> $out; head -c 300 "$f.xz" >> $out; echo >> $out
             fi
           done
-          while IFS= read -r line; do echo "::notice::$line"; done < <(cut -c1-180 $out | head -60)
+          grep -E '^(==|lines|last-modified)' $out | tr '\n' '|' | cut -c1-3000 | sed 's/^/::notice::/'
+          echo
+          grep -A8 'odyssey matches' $out | tr '\n' '|' | sed 's/^/::notice::/'
+          echo
+          grep -A3 'not valid' $out | tr '\n' '|' | cut -c1-1500 | sed 's/^/::notice::/'
