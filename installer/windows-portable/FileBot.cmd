@@ -6,6 +6,13 @@ rem Requires a Java 11 runtime that includes JavaFX, e.g. BellSoft Liberica "Ful
 rem Set JAVA_HOME to point at it, or make sure its bin folder is on PATH.
 rem Run FileBot-debug.cmd instead to see error messages in a console window.
 
+rem Interface scale. Leave empty to follow Windows display scaling, or set e.g. 1.75, 2 or 2.5
+rem for larger text. The FILEBOT_UI_SCALE environment variable overrides this line.
+set "UI_SCALE="
+if defined FILEBOT_UI_SCALE set "UI_SCALE=%FILEBOT_UI_SCALE%"
+set "SCALE_OPT="
+if defined UI_SCALE set "SCALE_OPT=-Dsun.java2d.uiScale=%UI_SCALE%"
+
 set "APP_DIR=%~dp0"
 set "APP_DIR=%APP_DIR:~0,-1%"
 set "APP_DATA=%APPDATA%\FileBot-Community"
@@ -47,5 +54,5 @@ start "" "%JAVA_EXE%" ^
  --add-opens=java.base/java.nio.charset=ALL-UNNAMED ^
  --add-opens=java.base/java.time=ALL-UNNAMED ^
  --add-opens=java.logging/java.util.logging=ALL-UNNAMED ^
- %JAVA_OPTS% %FILEBOT_OPTS% ^
+ %SCALE_OPT% %JAVA_OPTS% %FILEBOT_OPTS% ^
  -cp "%APP_DIR%\FileBot.jar;%APP_DIR%\lib\*" net.filebot.Main %*
