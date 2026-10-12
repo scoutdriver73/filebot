@@ -1,0 +1,28 @@
+name: Diagnose data files
+on:
+  push:
+    branches: [diag]
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          out=diag-result.txt; : > $out
+          for f in release-groups query-blacklist series-mappings moviedb thetvdb anidb osdb; do
+            u="https://app.filebot.net/data/$f.txt.xz"
+            code=$(curl -sS -L -o "$f.xz" -w '%{http_code} %{size_download} %{content_type}' -A 'FileBot 4.8.0' "$u" 2>&1)
+            echo "== $f: $code" >> $out
+            curl -sS -I -A 'FileBot 4.8.0' "$u" | grep -iE '^(last-modified|date|server)' >> $out || true
+            if xz -t "$f.xz" 2>/dev/null; then
+              echo "lines: $(xz -dc $f.xz | wc -l)" >> $out
+              xz -dc "$f.xz" | head -3 >> $out
+              [ "$f" = moviedb ] && { echo "odyssey matches:"; xz -dc $f.xz | grep -i 'odyssey' | tail -5; echo "max year:"; xz -dc $f.xz | awk -F'\t' '{print $4}' | grep -E '^[0-9]{4}$' | sort -n | tail -1; } >> $out
+            else
+              echo "not valid xz; first bytes:" >> $out; head -c 300 "$f.xz" >> $out; echo >> $out
+            fi
+          done
+          git config user.name ci; git config user.email ci@example.com
+          git add $out && git commit -m "diag result" && git push
